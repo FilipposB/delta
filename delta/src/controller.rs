@@ -1,13 +1,11 @@
-mod request;
-mod manifest;
 
 use std::cmp::min;
 use std::collections::VecDeque;
 use log::{debug, error, info};
 use std::io::{ErrorKind, Read, Write};
 use std::net::{Shutdown, SocketAddr, TcpStream};
+use delta_lib::request::{Request, RequestData, RequestFactory, RequestState};
 use crate::controller::ControllerAction::{PROCESS, RESET};
-use crate::controller::request::{Request, RequestData, RequestFactory, RequestState};
 
 const TCP_BUFFER_SIZE: usize = 1024;
 

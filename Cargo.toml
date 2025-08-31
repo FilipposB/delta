@@ -1,9 +1,2 @@
-[package]
-name = "delta"
-version = "0.1.0"
-edition = "2024"
-
-[dependencies]
-log = "0.4.27"
-env_logger = "0.11.8"
-uuid = { version = "1.18.0", features = ["v4"] }
+[workspace]
+members = ["delta", "delta-client", "delta-lib"]
