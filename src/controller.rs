@@ -1,4 +1,4 @@
-use log::{error, info};
+use log::{debug, error};
 use std::io::{ErrorKind, Read};
 use std::net::{SocketAddr, TcpStream};
 
@@ -7,25 +7,32 @@ const TCP_BUFFER_SIZE: usize = 1024;
 pub struct Controller {
     tcp_stream: TcpStream,
     addr: SocketAddr,
+    buffer: [u8; TCP_BUFFER_SIZE],
+    cached_buffer: Vec<u8>,
 }
 
 impl Controller {
     pub fn new(tcp_stream: TcpStream, addr: SocketAddr) -> Controller {
-        Controller { tcp_stream, addr }
+        Controller { 
+            tcp_stream,
+            addr ,
+            buffer: [0; TCP_BUFFER_SIZE],
+            cached_buffer: Vec::new()
+        }
     }
 
     pub fn tick(&mut self) {
-        let mut buffer = [0; TCP_BUFFER_SIZE];
-        match self.tcp_stream.read(&mut buffer) {
+        match self.tcp_stream.read(&mut self.buffer) {
             Ok(bytes_read) => {
                 if bytes_read == 0 {
                     return;
                 }
-                info!(
-                    "TCP client {} sent {}",
+                debug!(
+                    "TCP client {} sent {} Bytes",
                     self.addr,
-                    String::from_utf8_lossy(&buffer[0..bytes_read])
+                    bytes_read
                 );
+                self.cached_buffer.extend(self.buffer[0..bytes_read].iter());
             }
             Err(err) => match err.kind() {
                 ErrorKind::WouldBlock => {}
@@ -35,5 +42,12 @@ impl Controller {
                 }
             },
         }
+        
+        if self.cached_buffer.len() == 0 {
+            return;
+        }
+        
+        
+        
     }
 }
