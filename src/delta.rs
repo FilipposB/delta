@@ -1,7 +1,12 @@
 use std::io::ErrorKind;
 use std::net::{TcpListener, UdpSocket};
+use std::thread::sleep;
+use std::time::Duration;
 use log::{debug, error, info};
-use crate::controller::Controller;
+use delta_lib::object::manifest::Manifest;
+use delta_lib::request::{prepare_package, RequestData, RequestType};
+use uuid::Uuid;
+use delta_lib::controller::Controller;
 use crate::dispense_manager::DispenseManager;
 
 const MAX_NEW_CONNECTIONS_PER_TICK: usize = 10;
@@ -62,9 +67,12 @@ impl Delta {
         for _ in 0..MAX_NEW_CONNECTIONS_PER_TICK {
             match self.udp_socket.recv_from(&mut buffer){
                 Ok(x) => {
-                    let id = String::from_utf8_lossy(&buffer[0..x.0]);
-                    self.dispense_manager.add_to_dispenser(&*id, &x.1);
-                    info!("UDP client from {} sent {}", x.1, id);
+                    if x.0 != 16 {
+                        continue;
+                    }
+                    let subscriber_id = Uuid::from_bytes((&buffer[0..16]).try_into().unwrap());
+                    self.dispense_manager.add_to_dispenser(subscriber_id, &x.1);
+                    info!("UDP client from {} sent {}", x.1, subscriber_id);
                 }
                 Err(err) => {
                     match err.kind() {
@@ -85,9 +93,29 @@ impl Delta {
 
     pub fn tick(&mut self){
         self.listen_for_new_controller_clients();
-        self.controllers.iter_mut().for_each(|controller| controller.tick());
+        
+        self.controllers.iter_mut().for_each(
+            |controller| {
+            if let Some(request) = controller.read() {
+                match request {
+                    RequestData::DownloadResource(data) => {
+                        
+                        match self.dispense_manager.manifest_for_user(&data.id()){
+                            None => {}
+                            Some(manifest) => {
+                                controller.write(RequestType::SendManifest, Box::new(manifest))
+                            }
+                        }
+                        
+                    }
+                    _ => {}
+                }
+            }
+        });
+        
         self.listen_for_new_udp_clients();
         self.dispense_manager.tick(&self.udp_socket);
+        sleep(Duration::from_nanos(1000));
     }
 
 

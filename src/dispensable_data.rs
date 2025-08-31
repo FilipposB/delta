@@ -5,26 +5,31 @@ use std::io::{Read, Seek, SeekFrom};
 
 pub struct DispensableData{
     path: String,
+    name: String,
     chunk_size: usize,
     in_memory_chunks: HashMap<u64, Vec<u8>>,
     total_chunks: u64,
     max_chunks_in_memory: u64,
+    total_bytes: u64,
     buffer: Vec<u8>,
 }
 
 impl DispensableData{
-    pub fn new(path: &str, chunk_size: usize, max_chunks_in_memory: u64) -> io::Result<DispensableData> {
+    pub fn new(path: &str, name: &str, chunk_size: usize, max_chunks_in_memory: u64) -> io::Result<DispensableData> {
 
         let metadata = fs::metadata(path)?;
-        let total_chunks = metadata.len() / chunk_size as u64;
+        let total_bytes = metadata.len();
+        let total_chunks: usize = (total_bytes as usize + chunk_size - 1) / chunk_size;
 
         Ok(
         DispensableData{
-            path: path.parse().unwrap(),
-            in_memory_chunks: HashMap::new(),
+            path: path.to_string(),
+            name: name.to_string(),
             chunk_size,
-            total_chunks,
+            in_memory_chunks: HashMap::new(),
+            total_chunks: total_chunks as u64,
             max_chunks_in_memory,
+            total_bytes,
             buffer: vec![0; chunk_size],
         })
     }
@@ -47,7 +52,7 @@ impl DispensableData{
         match self.in_memory_chunks.get(&chunk) {
             Some(chunk) => {Ok(chunk.clone())}
             None => {
-                let data = self.read_chunk(chunk);
+                let data = self.read_chunk(chunk * self.chunk_size as u64);
                 
                 match data {
                     Ok(data) => {
@@ -79,4 +84,27 @@ impl DispensableData{
         self.total_chunks
     }
 
+    pub fn path(&self) -> &str {
+        &self.path
+    }
+
+    pub fn total_chunks(&self) -> u64 {
+        self.total_chunks
+    }
+
+    pub fn chunk_size(&self) -> usize {
+        self.chunk_size + 8
+    }
+    
+    pub fn payload_size(&self) -> usize {
+        self.chunk_size
+    }
+
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    pub fn total_bytes(&self) -> u64 {
+        self.total_bytes
+    }
 }

@@ -7,3 +7,4 @@ edition = "2024"
 log = "0.4.27"
 env_logger = "0.11.8"
 delta-lib ={ path = "../delta-lib" }
+uuid = { version = "1.18.0", features = ["v4"] }
