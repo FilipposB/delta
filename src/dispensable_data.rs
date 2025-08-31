@@ -9,6 +9,7 @@ pub struct DispensableData{
     in_memory_chunks: HashMap<u64, Vec<u8>>,
     total_chunks: u64,
     max_chunks_in_memory: u64,
+    buffer: Vec<u8>,
 }
 
 impl DispensableData{
@@ -24,6 +25,7 @@ impl DispensableData{
             chunk_size,
             total_chunks,
             max_chunks_in_memory,
+            buffer: vec![0; chunk_size],
         })
     }
     
@@ -61,15 +63,13 @@ impl DispensableData{
         }
     }
 
-    fn read_chunk(&self, offset: u64) -> io::Result<Vec<u8>> {
+    fn read_chunk(&mut self, offset: u64) -> io::Result<Vec<u8>> {
         let mut file = File::open(self.path.clone())?;
         file.seek(SeekFrom::Start(offset))?;
 
-        let mut buffer = vec![0u8; self.chunk_size];
-
-        match file.read(&mut buffer) {
+        match file.read(&mut self.buffer) {
             Ok(size) => {
-                Ok(buffer[0..size].to_vec())
+                Ok(self.buffer[0..size].to_vec())
             }
             Err(e) => Err(e)
         }
